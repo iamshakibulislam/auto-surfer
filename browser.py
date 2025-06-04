@@ -3,6 +3,7 @@ import random
 import time
 from PyQt5 import QtNetwork
 from PyQt5.QtWebEngineCore import QWebEngineHttpRequest
+from PyQt5.QtWebEngineWidgets import QWebEnginePage
 
 from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 from PyQt5.QtWidgets import (
@@ -11,16 +12,17 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer, QUrl, Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile
 
+class NWUrlRequestInterceptor(QWebEngineUrlRequestInterceptor):
 
-class RefererInterceptor(QWebEngineUrlRequestInterceptor):
-    def __init__(self, referer_value):
+    def __init__(self, headers):
         super().__init__()
-        self.referer_value = referer_value
+        self.headers = headers
+
+    def set_headers(self, headers):
+        self.headers = headers
 
     def interceptRequest(self, info):
-        # Only set the referer for HTTP/HTTPS requests
-        if info.requestUrl().scheme().startswith('http'):
-            info.setHttpHeader(b'Referer', self.referer_value.encode())
+        info.setHttpHeader(b'Referer', str(self.headers).encode('ASCII'))
 
 class BrowserWidget(QWidget):
     def __init__(self):
@@ -224,29 +226,54 @@ class BrowserWidget(QWidget):
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
 
+    
     def reload_browser(self, first=False):
         if not first:
             self.current_visit += 1
         if self.current_visit >= self.max_visits:
             self.stop_visits()
             return
-        user_agent = random.choice(self.user_agents)
-        profile = QWebEngineProfile(f'profile_{time.time()}', self)
-        profile.setHttpUserAgent(user_agent)
-        self.browser.setPage(self.browser.page().__class__(profile, self.browser))
+
         url = self.url_input.text().strip()
+        if not url:
+            return
+
+        # Pick a random user-agent and referer
+        user_agent = random.choice(self.user_agents)
         referer = random.choice([
-    
             "https://l.facebook.com/",
             "https://lm.facebook.com/"
         ])
 
-        request = QWebEngineHttpRequest(QUrl(url))
-        request.setHeader(b"Referer", referer.encode())
-        self.browser.load(request)
+        # Create a new QWebEngineView (or reuse self.browser)
+        #self.browser = QWebEngineView()
 
-        #self.browser.load(QUrl(url))
+        # Set custom user-agent
+        profile = QWebEngineProfile.defaultProfile()
+        profile.setHttpUserAgent(user_agent)
+
+        # Set up your working interceptor class with referer header
+        self.request_interceptor = NWUrlRequestInterceptor(referer)
+        profile.setUrlRequestInterceptor(self.request_interceptor)
+
+        # Optional: clear cookies if needed
+        cookie_store = profile.cookieStore()
+        cookie_store.deleteAllCookies()
+
+        # Attach a new page with profile to the browser
+        page = QWebEnginePage(profile, self.browser)
+        self.browser.setPage(page)
+
+        # Load the URL
+        self.browser.load(QUrl(url))
+
+        # Start the timer for reload
         self.timer.start(self.duration)
+
+
+ 
+
+
 
     def default_user_agent(self):
         return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
