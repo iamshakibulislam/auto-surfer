@@ -265,7 +265,8 @@ class BrowserWidget(QWidget):
         self.browser.setPage(page)
 
         # Load the URL
-        self.browser.load(QUrl(url))
+        QTimer.singleShot(300, lambda: self.browser.load(QUrl(url)))
+        #self.browser.load(QUrl(url))
 
         # Start the timer for reload
         self.timer.start(self.duration)
