@@ -1,10 +1,11 @@
 import sys
 import random
+import requests
 import time
 from PyQt5 import QtNetwork
 from PyQt5.QtWebEngineCore import QWebEngineHttpRequest
 from PyQt5.QtWebEngineWidgets import QWebEnginePage
-
+from string import Template
 from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QTextEdit, QSpinBox, QFileDialog, QMessageBox
@@ -116,6 +117,8 @@ class BrowserWidget(QWidget):
         self.browser = QWebEngineView()
         self.browser.setStyleSheet('border-radius: 10px; background: #f7fafd;')
         main_layout.addWidget(self.browser, stretch=1)
+
+        self.last_visited_url = None
 
         # Timer and state
         self.timer = QTimer()
@@ -237,6 +240,229 @@ class BrowserWidget(QWidget):
         url = self.url_input.text().strip()
         if not url:
             return
+        
+        js_for_clicking_just_looking = """
+
+
+                    (function() {
+                        if (window.__myScriptAlreadyRan) return;
+                        window.__myScriptAlreadyRan = true;
+
+                        function runPostLoadLogic() {
+                            
+                            // Your post-load logic here
+                            function clickButtonWithText(targetText) {
+                                    const buttons = document.querySelectorAll('button, input[type="button"], input[type="submit"]');
+
+                                    for (let btn of buttons) {
+                                        const text = btn.innerText || btn.value;
+                                        if (text.trim().toLowerCase() === targetText.toLowerCase()) {
+                                            btn.click();
+                                            return;
+                                        }
+                                    }
+
+                                    alert("button text not found");
+                                }
+
+                                clickButtonWithText("Just looking");
+
+                                //logic ends here
+                                                        }
+
+                        if (document.readyState === 'complete') {
+                            runPostLoadLogic();
+                        } else {
+                            window.addEventListener('load', runPostLoadLogic, { once: true });
+                        }
+                    })();
+
+        """
+        
+
+        def onLoadFinished(ok):
+                    if ok:
+
+                        web_url = self.browser.url().toString()
+
+                        if self.last_visited_url == web_url:
+                            return
+                        
+                        self.last_visited_url = web_url
+                        # here goes the js work of clicking and filling the form and submitting the form
+                        if "expertjobmatch.com/career" in web_url:
+
+                            self.browser.page().runJavaScript(js_for_clicking_just_looking)
+                        
+                        elif "expertjobmatch.com/subscribe" in web_url:
+                            
+
+
+
+                            def get_usa_male_user_data():
+                                url = "https://randomuser.me/api/?gender=male&nat=us&inc=name,phone"
+                                try:
+                                    response = requests.get(url)
+                                    response.raise_for_status()
+
+                                    data = response.json()
+                                    user = data['results'][0]
+
+                                    return {
+                                        "first_name": user["name"]["first"],
+                                        "last_name": user["name"]["last"],
+                                        "phone": user["phone"]
+                                    }
+
+                                except requests.RequestException as e:
+                                    print("Error fetching data:", e)
+                                    return None
+
+                            import random
+
+                            def get_and_remove_random_email(file_path="emails.txt"):
+                                try:
+                                    # Read all non-empty lines (strip whitespace/newlines)
+                                    with open(file_path, "r") as file:
+                                        emails = [line.strip() for line in file if line.strip()]
+
+                                    if not emails:
+                                        print("No emails found.")
+                                        return None
+
+                                    # Pick a random email
+                                    chosen_email = random.choice(emails)
+
+                                    # Remove it from the list
+                                    #emails.remove(chosen_email)
+
+                                    # Write back the remaining emails
+                                    
+
+                                    return chosen_email
+
+                                except FileNotFoundError:
+                                    print(f"File '{file_path}' not found.")
+                                    return None
+                                except Exception as e:
+                                    print("Error:", e)
+                                    return None
+                            
+
+                            selected_email = get_and_remove_random_email()
+                            usa_male_data = get_usa_male_user_data()
+
+                            print("selected email is ",selected_email)
+
+
+                            form_fillup_js = Template("""
+
+                            //form fillout logic here
+
+                                        
+                                function simulateTyping(inputId, text, minDelay = 200, maxDelay = 1400) {
+                                    return new Promise((resolve) => {
+                                        const input = document.getElementById(inputId);
+                                        if (!input) return resolve();
+
+                                        input.focus();
+                                        input.value = '';
+
+                                        let i = 0;
+
+                                        function typeNextChar() {
+                                            if (i >= text.length) {
+                                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                                                return resolve();
+                                            }
+
+                                            const char = text[i];
+                                            const charCode = char.charCodeAt(0);
+                                            const keyCode = char.toUpperCase().charCodeAt(0);
+                                            const key = char;
+                                            const code = 'Key' + char.toUpperCase();
+
+                                            input.dispatchEvent(new KeyboardEvent('keydown', { key, code, keyCode, charCode, bubbles: true }));
+                                            input.dispatchEvent(new KeyboardEvent('keypress', { key, code, keyCode, charCode, bubbles: true }));
+
+                                            input.value += char;
+
+                                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                                            input.dispatchEvent(new KeyboardEvent('keyup', { key, code, keyCode, charCode, bubbles: true }));
+
+                                            i++;
+
+                                            const delay = Math.random() * (maxDelay - minDelay) + minDelay;
+                                            setTimeout(typeNextChar, delay);
+                                        }
+
+                                        typeNextChar();
+                                    });
+                                }
+
+                                // Main logic
+                                (function () {
+                                    if (window.__myScriptAlreadyRan) return;
+                                    window.__myScriptAlreadyRan = true;
+
+                                    function runPostLoadLogic() {
+                                        simulateTyping("first_name", "$first_name")
+                                            .then(() => simulateTyping("last_name", "$last_name"))
+                                            .then(() => simulateTyping("email", "$email"))
+                                            .then(() => simulateTyping("phone", "$phone"));
+                                    }
+
+                                    if (document.readyState === 'complete') {
+                                        runPostLoadLogic();
+                                    } else {
+                                        window.addEventListener('load', runPostLoadLogic, { once: true });
+                                    }
+                                })();
+
+
+
+                            """).substitute(first_name=usa_male_data["first_name"],last_name=usa_male_data["last_name"],email=selected_email,phone=usa_male_data["phone"])
+
+                            self.browser.page().runJavaScript(form_fillup_js)
+
+                            def remove_email_from_file(email_to_remove, file_path="emails.txt"):
+                                try:
+                                    # Read and clean all lines
+                                    with open(file_path, "r") as file:
+                                        emails = [line.strip() for line in file if line.strip()]
+
+                                    # Filter out the target email
+                                    updated_emails = [email for email in emails if email != email_to_remove]
+
+                                    if len(emails) == len(updated_emails):
+                                        print("Email not found.")
+                                        return False  # Nothing was removed
+
+                                    # Write back updated emails
+                                    with open(file_path, "w") as file:
+                                        for email in updated_emails:
+                                            file.write(email + "\n")
+
+                                    print(f"Removed: {email_to_remove}")
+                                    return True
+
+                                except FileNotFoundError:
+                                    print(f"File '{file_path}' not found.")
+                                    return False
+                                except Exception as e:
+                                    print("Error:", e)
+                                    return False
+                            
+                            remove_email_from_file(selected_email)
+                            
+
+                        
+                        else:
+                            pass
+
+                        
+                        
+
 
         # Pick a random user-agent and referer
         user_agent = random.choice(self.user_agents)
@@ -263,6 +489,8 @@ class BrowserWidget(QWidget):
         # Attach a new page with profile to the browser
         page = QWebEnginePage(profile, self.browser)
         self.browser.setPage(page)
+
+        self.browser.loadFinished.connect(lambda:onLoadFinished("ok"))
 
         # Load the URL
         QTimer.singleShot(300, lambda: self.browser.load(QUrl(url)))
